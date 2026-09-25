@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#102a43" />
+  <meta name="description" content="PowderSolve: rules-first thermoset powder coating troubleshooting knowledge base." />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="styles.css" />
+  <title>PowderSolve | Coating Troubleshooting</title>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><div class="brand-mark">P</div><div><strong>PowderSolve</strong><span>Thermoset powder coating diagnostics</span></div></div>
+  <div class="header-actions"><button id="installBtn" class="ghost hidden">Install</button><button id="safetyBtn" class="danger">Safety</button></div>
+</header>
+<main class="shell">
+  <section class="hero">
+    <div><p class="eyebrow">FIELD KNOWLEDGE · RULES FIRST</p><h1>Find the next safe diagnostic step.</h1><p class="sub">Search symptoms, compare likely causes, and validate with measurements. This is a decision-support tool—not a substitute for the product TDS, equipment manual, or qualified process approval.</p></div>
+    <div class="hero-stat"><b id="recordCount">0</b><span>knowledge records</span></div>
+  </section>
+  <nav class="tabs" aria-label="Primary"><button data-tab="diagnose" class="active">Diagnose</button><button data-tab="knowledge">Knowledge base</button><button data-tab="visual">Visual guide</button><button data-tab="colour">Colour variation</button><button data-tab="cure">Cure profiles</button><button data-tab="sources">Sources</button><button data-tab="about">Method & limits</button></nav>
+
+  <section id="tab-diagnose" class="tab-panel active">
+    <section class="quick-start card">
+      <div class="section-head"><div><p class="eyebrow">START HERE</p><h2>What are you seeing?</h2><p class="muted">Choose a plain-language symptom to begin. You can refine the diagnosis below.</p></div><span class="pill accent-pill">Guided triage</span></div>
+      <div class="symptom-grid" id="quickSymptoms">
+        <button class="symptom-tile" data-symptom="rough finish"><span class="symptom-icon">≈</span><b>Rough / uneven finish</b><small>Orange peel, texture or poor flow</small></button>
+        <button class="symptom-tile" data-symptom="crater fish eye pinhole"><span class="symptom-icon">◉</span><b>Small holes or craters</b><small>Pinholes, craters or fisheyes</small></button>
+        <button class="symptom-tile" data-symptom="colour variation colour mismatch"><span class="symptom-icon">◐</span><b>Colour looks different</b><small>Shade, gloss or batch variation</small></button>
+        <button class="symptom-tile" data-symptom="adhesion peeling delamination"><span class="symptom-icon">↗</span><b>Peeling / poor adhesion</b><small>Flaking, delamination or failure</small></button>
+        <button class="symptom-tile" data-symptom="cure under cure over cure"><span class="symptom-icon">⌁</span><b>Cure problem</b><small>Soft film, brittleness or poor properties</small></button>
+        <button class="symptom-tile" data-symptom="coverage edge coverage back ionisation"><span class="symptom-icon">＋</span><b>Coverage problem</b><small>Thin edges, back-ionisation or misses</small></button>
+      </div>
+    </section>
+    <div class="diagnostic-progress"><span class="progress-step active">1. Describe</span><span class="progress-line"></span><span class="progress-step">2. Narrow down</span><span class="progress-line"></span><span class="progress-step">3. Verify</span></div>
+    <div class="panel-grid">
+      <section class="card"><div class="section-head"><div><p class="eyebrow">01 · TRIAGE</p><h2>Describe the problem</h2></div><button id="resetDiag" class="text-btn">Reset</button></div>
+        <label>Symptom or keyword<input id="diagSearch" placeholder="e.g. poor adhesion, pinholes, orange peel" /></label>
+        <div class="two-col"><label>Module<select id="diagModule"><option value="">All modules</option></select></label><label>Substrate<select id="diagSubstrate"><option value="">Not specified</option><option>Aluminium</option><option>Mild steel</option><option>Galvanized steel</option><option>Cast iron</option><option>Mixed thickness</option></select></label></div>
+        <div class="two-col"><label>Thickness<select id="diagThickness"><option value="">Not specified</option><option>Thin sheet</option><option>Medium section</option><option>Heavy section</option><option>Mixed thickness</option></select></label><label>Urgency<select id="diagUrgency"><option>Routine</option><option>High risk / customer rejection</option><option>Safety / equipment concern</option></select></label></div>
+        <div class="guided-note"><span>✓</span><div><b>Start with evidence</b><p>Check substrate condition, grounding, film thickness, PMT and pretreatment records before changing multiple process variables.</p></div></div><div class="notice"><b>Diagnostic rule:</b> start with evidence—substrate condition, grounding, film thickness, PMT and pretreatment records—before changing multiple process variables.</div>
+      </section>
+      <section class="card"><div class="section-head"><div><p class="eyebrow">02 · RESULTS</p><h2>Candidate records</h2></div><span class="pill" id="resultCount">0 matches</span></div><div id="diagResults" class="results"></div></section>
+    </div>
+  <section class="card next-step-card"><div><p class="eyebrow">NEXT STEP</p><h3>Use the result cards as a checklist</h3><p class="muted">Expand a match to see causes, diagnostic checks, corrective actions and verification points. Do not treat a match as a confirmed root cause.</p></div><button class="primary" id="openVisualFromDiag">View visual guide</button></section>
+  </section>
+
+  <section id="tab-knowledge" class="tab-panel"><section class="card"><div class="section-head"><div><p class="eyebrow">REFERENCE</p><h2>Knowledge base</h2></div><div class="toolbar"><input id="kbSearch" placeholder="Search records" /><select id="kbModule"><option value="">All modules</option></select></div></div><div id="kbResults" class="results"></div></section></section>
+  <section id="tab-visual" class="tab-panel"><section class="card"><div class="section-head"><div><p class="eyebrow">IDENTIFICATION</p><h2>Visual defect guide</h2></div><input id="visualSearch" placeholder="Search defect, alias or symptom" /></div><div class="notice">Use the visuals as orientation only. Confirm the defect using measurements, controlled comparisons and the relevant product/equipment documentation. Illustrations are not a substitute for an approved defect standard.</div><div id="visualResults" class="visual-grid"></div></section></section>
+  <section id="tab-colour" class="tab-panel"><section class="card"><div class="section-head"><div><p class="eyebrow">COLOUR & APPEARANCE</p><h2>Colour variation library</h2></div><input id="colourSearch" placeholder="Search colour issue" /></div><div class="notice warning">Colour matching must be assessed under controlled lighting with an approved standard. Apparent colour differences can be caused by gloss, texture, thickness, cure history or viewing geometry.</div><div id="colourResults" class="results"></div></section></section>
+  <section id="tab-sources" class="tab-panel"><section class="card"><div class="section-head"><div><p class="eyebrow">REFERENCE REGISTER</p><h2>Sources & review status</h2></div><input id="sourceSearch" placeholder="Search sources" /></div><div class="notice">Sources are kept separately from defect guidance. They support review and traceability; they are not a substitute for product TDS, SDS, equipment manuals or specialist approval.</div><div id="sourceResults" class="results"></div></section></section>
+  <section id="tab-cure" class="tab-panel"><section class="card"><div class="section-head"><div><p class="eyebrow">THERMAL VALIDATION</p><h2>Illustrative cure profiles</h2></div><span class="pill warning-pill">Not production recipes</span></div><p class="muted">These curves illustrate relative heat-up behavior from the knowledge base. Real cure acceptance requires product-specific TDS limits and measured part-metal-temperature profiling at the slowest and hottest locations.</p><div class="chart-wrap"><svg id="cureChart" viewBox="0 0 900 430" role="img" aria-label="Illustrative cure heat-up profiles"></svg></div><div id="cureCards" class="profile-grid"></div><div id="cureMatrix" class="results"></div></section></section>
+  <section id="tab-about" class="tab-panel"><section class="card"><p class="eyebrow">GOVERNANCE</p><h2>Method, scope and limits</h2><div class="about-grid"><div><h3>Use it for</h3><ul><li>First-line symptom triage.</li><li>Structured questions for operators and QC.</li><li>Separating process checks from formulation escalation.</li><li>Building a traceable diagnostic record.</li></ul></div><div><h3>Do not use it for</h3><ul><li>Replacing a product TDS or SDS.</li><li>Issuing an unvalidated cure schedule.</li><li>Overriding equipment safety interlocks.</li><li>Accepting a batch without agreed test criteria.</li></ul></div></div><div class="notice">Status: this is a structured knowledge-base app generated from the supplied troubleshooting material plus clearly marked technical expansion. Records should be reviewed by a powder coating process specialist before being released as controlled production guidance.</div><h3>Suggested operating workflow</h3><ol><li>Record the symptom and affected population.</li><li>Check the simplest high-impact variables first.</li><li>Change one variable at a time within approved limits.</li><li>Verify with measurement and a retained/approved panel.</li><li>Escalate unresolved formulation or substrate issues with evidence.</li></ol></section></section>
+</main>
+<div id="safetyModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="safetyTitle"><div class="modal-box"><div class="section-head"><h2 id="safetyTitle">Safety gate</h2><button id="closeSafety" class="text-btn">Close</button></div><ul><li>Follow the equipment manufacturer’s manual, SDS and site risk assessment.</li><li>Do not bypass grounding, interlocks, ventilation, explosion protection or lockout/tagout controls.</li><li>Do not make cure changes without confirming product-specific minimum and maximum exposure guidance.</li><li>Stop and escalate for fire, electrical, compressed-air, solvent, dust or unknown chemical hazards.</li></ul><button id="ackSafety" class="primary">I understand</button></div></div>
+<footer><span>PowderSolve · Knowledge support, not production authorization</span><span id="version"></span></footer>
+<script src="app.js" defer></script>
+</body></html>
