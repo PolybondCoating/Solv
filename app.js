@@ -237,7 +237,7 @@ function renderHeatUp(){
     if(air===null)need.push('oven air temperature'); if(!tgtOk)need.push('a cure target'); if(!h)need.push('one profiler reading from your oven (step 3)');
     hint=`<p class="hu-hint">Showing relative times only. To get minutes, add ${need.join(', ')}.</p>`;
   }
-  let chart='', insight='';
+  let chart=canTime?'':huRelChart(rows,ref.label), insight='';
   if(canTime){
     const pick=rows.length>6?[0,1,2,Math.floor(rows.length/2),rows.length-2,rows.length-1].map(i=>rows[i]):rows;
     const tMax=Math.max(...rows.map(r=>r.reach+(dwell||0)*60))*1.15;
@@ -246,6 +246,13 @@ function renderHeatUp(){
     if(rows.length>1)insight=`<div class="notice warning"><b>Mixed loads:</b> ${thick.t} mm reaches ${tgt.pmt}°C about <b>${fmtMin(thick.reach-thin.reach)} min</b> after ${thin.t} mm. If they run together, the thin section spends that extra time at or above PMT — check the TDS upper limit, and profile both the thinnest and the heaviest location.</div>`;
   }
   out.innerHTML=`${msgs.map(m=>`<div class="notice warning">${esc(m)}</div>`).join('')}${table}${hint}${chart}${insight}<div class="notice cure-warning"><b>Estimate only.</b> ${canTime?`Calibrated from your reading of ${refThk} mm ${esc(refMat.name.toLowerCase())} reaching ${refT}°C after ${refMin} min. Valid only for the same oven, settings, line speed and loading.`:'Relative times assume the same oven and loading for every thickness.'} ${tgtOk&&tsel!=='custom'?`The cure target is ${esc(tgt.group||'')} reference data — your product TDS takes precedence.`:''} Confirm with a profiler on the slowest-heating location before setting a production cycle.</div>`;
+}
+// Before calibration: bar chart of relative heat-up time. Physics only, no oven assumptions.
+function huRelChart(rows,refLabel){
+  const w=820,rowH=30,left=70,right=90,top=16,h=top+rows.length*rowH+34,pw=w-left-right;
+  const max=Math.max(...rows.map(r=>r.rel));
+  const bars=rows.map((r,i)=>{const y=top+i*rowH,bw=Math.max(2,r.rel/max*pw);return `<text x="${left-10}" y="${y+19}" text-anchor="end" font-size="13" font-weight="700" fill="#102a43">${r.t} mm</text><rect x="${left}" y="${y+5}" width="${bw}" height="20" rx="4" fill="#1f7a8c" opacity="${0.45+0.55*r.rel/max}"/><text x="${left+bw+8}" y="${y+19}" font-size="13" fill="#334e68">${r.rel.toFixed(r.rel<10?2:1)}×</text>`;}).join('');
+  return `<div class="cure-graph"><svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Relative heat-up time by thickness">${bars}<text x="${left}" y="${h-10}" font-size="12" fill="#52677a">Relative time to reach PMT (1× = ${esc(refLabel)}) — longer bar = slower to heat</text></svg><div class="hu-legend"><span class="muted">Add oven air temperature, a cure target and one profiler reading to see this as minutes and temperature curves.</span></div></div>`;
 }
 function huChart(rows,air,start,pmt,tMax){
   const w=820,h=320,left=58,right=24,top=20,bottom=46,pw=w-left-right,ph=h-top-bottom;
