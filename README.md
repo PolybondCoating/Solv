@@ -17,9 +17,21 @@ The Excel master workbook is the editing/review source, but GitHub Pages never r
 
 ## data.json sections
 
-`Problems` (88), `Diagnostic_Questions`, `Diagnostic_Rules` (linked to problems via `Applies to problem IDs`), `Visual_Guide`, `Sources`, `Source_Leads`, `Cure_Profiles` (IFS curves), `Cure_Schedules` (IFS), `Cure_Product_Windows` (PPG), `Cure_Diagnostic_Matrix`, `Conversation`, `README`.
+`Problems` (88), `Diagnostic_Questions`, `Diagnostic_Rules` (linked to problems via `Applies to problem IDs`), `Diagnostic_Pathways` (branching question trees), `Visual_Guide`, `Sources`, `Source_Leads`, `Cure_Profiles` (IFS curves), `Cure_Schedules` (IFS), `Cure_Product_Windows` (PPG), `Cure_Diagnostic_Matrix`, `Conversation`, `README`.
 
 Every cure record's `Source` / `Source ID` must match a `Source ID` in `Sources`.
+
+## Diagnostic pathways
+
+`Diagnostic_Pathways` holds branching question trees. Each pathway lists its `Entry problems`, a `Start` node and `Nodes`. Each option has a `next` node (or `null` to finish) and may add `focus` (problem IDs to show under "Also check") and a `note` (why). Every question and note cites the existing records it is derived from (`basis`); pathways must not introduce new technical values. Problems without a pathway fall back to a simple question list built from their own `questions` field. All pathways are currently **Draft**.
+
+## Before committing data changes
+
+```bash
+python tools/validate_data.py
+```
+
+Checks JSON validity, duplicate sections, empty problem fields, source links, rule links and pathway integrity (unknown nodes/problems, unreachable nodes, loops). It cannot judge technical correctness.
 
 ## Run locally
 

@@ -1,19 +1,33 @@
-const state={data:null,tab:'diagnose',problem:null,step:0,answers:[]};
+const state={data:null,tab:'diagnose',problem:null,path:null,node:null,history:[]};
 const $=s=>document.querySelector(s); const $$=s=>[...document.querySelectorAll(s)];
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const clean=v=>String(v??'').trim();
 const allText=o=>Object.values(o||{}).filter(v=>v!==null&&v!==undefined).join(' ').toLowerCase();
 const tokens=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').split(/\s+/).filter(w=>w.length>2);
 
+const STOP=new Set(['coating','coated','coat','the','and','not','are','getting','with','part','parts','there','this','that','has','have','very','some','keeps','doesn','does','dont','isn','its','my','our','after','when']);
+const qTokens=q=>tokens(q).filter(w=>!STOP.has(w));
+// Weighted match: the problem title and search aliases count most, causes least.
 function scoreProblem(p,q){
-  const qs=tokens(q); if(!qs.length)return 0;
-  const fields=[p.problem,p.description,p.search,p.domain,p.causes,p.visual,p.confused_with];
-  const hay=tokens(fields.join(' ')); const set=new Set(hay); let score=0;
+  const qs=qTokens(q); if(!qs.length)return 0;
+  const own=new Set(tokens(`${p.problem} ${p.description}`)); const aliases=tokens(p.search).filter(t=>!own.has(t)).join(' ');
+  const fields=[[p.problem,6],[aliases,5],[p.description,4],[p.visual,3],[p.confused_with,3],[p.domain,1],[p.causes,1]].map(([t,w])=>[tokens(t),w]);
+  let score=0;
   const exact=clean(q).toLowerCase();
   if(clean(p.problem).toLowerCase()===exact)score+=30;
-  if(clean(p.problem).toLowerCase().includes(exact))score+=12;
-  for(const w of qs){if(set.has(w))score+=5; else if(hay.some(t=>t.includes(w)||w.includes(t)))score+=2;}
-  if(p.id.startsWith('SRC-'))score-=5;
+  for(const w of qs){
+    let best=0;
+    for(const [toks,wt] of fields){
+      if(toks.includes(w))best=Math.max(best,wt);
+      else if(w.length>=4&&toks.some(t=>t.length>=4&&(t.startsWith(w)||w.startsWith(t))))best=Math.max(best,wt/2);
+    }
+    const stem=w.slice(0,Math.max(4,w.length-3));
+    if(best&&fields[0][0].some(t=>t.startsWith(stem)))best+=1; // bonus when the title itself matches
+    score+=best;
+  }
+  // A pathway's plain-language title (e.g. "Peeling or poor adhesion") boosts its main record.
+  const pw=(state.data?.Diagnostic_Pathways||[]).find(w=>(w['Entry problems']||[])[0]===p.id);
+  if(pw&&score){const tt=tokens(pw.Title);score+=3*qs.filter(w=>tt.some(t=>t.startsWith(w.slice(0,Math.max(4,w.length-3))))).length;}
   return score;
 }
 function searchProblems(q){
@@ -22,42 +36,63 @@ function searchProblems(q){
 function splitQuestions(s){
   const raw=clean(s); if(!raw)return [];
   let parts=raw.split(/\?\s*|;\s*/).map(x=>x.trim()).filter(Boolean);
-  return parts.map(x=>/\?$/.test(x)?x:`Can you check ${x.replace(/^check\s+/i,'').replace(/^inspect\s+/i,'inspect ')}?`).slice(0,5);
+  return parts.map(x=>/\?$/.test(x)?x:`${x.charAt(0).toUpperCase()+x.slice(1)} — have you done this yet?`).slice(0,5);
 }
+// Problems without an authored pathway get a simple linear pathway built from their own checks.
+function linearPathway(p){
+  const qs=splitQuestions(p.questions).slice(0,state.data.Conversation.max_questions||3); const nodes={};
+  qs.forEach((q,i)=>{const next=i+1<qs.length?`q${i+1}`:null;nodes[`q${i}`]={question:q,options:['Yes','No','Not sure','Skip'].map(label=>({label,next}))};});
+  return {'Pathway ID':null,Opening:`Let’s narrow down ${p.problem.toLowerCase()}.`,Start:qs.length?'q0':null,Nodes:nodes,linear:true};
+}
+function pathwayFor(p){return (state.data.Diagnostic_Pathways||[]).find(w=>(w['Entry problems']||[]).includes(p.id))||linearPathway(p);}
+const problemById=id=>state.data.Problems.find(x=>x.id===id);
 function startConversation(p){
-  state.problem=p; state.step=0; state.answers=[]; renderConversation(true); askNext();
+  state.problem=p; state.path=pathwayFor(p); state.node=state.path.Start; state.history=[]; renderConversation();
 }
 function addBubble(role,html,extra=''){
-  const chat=$('#conversation'); const el=document.createElement('div'); el.className=`bubble ${role} ${extra}`; el.innerHTML=html; chat.appendChild(el); chat.scrollTop=chat.scrollHeight;
+  const chat=$('#conversation'); const el=document.createElement('div'); el.className=`bubble ${role} ${extra}`; el.innerHTML=html; chat.appendChild(el); return el;
 }
-function renderConversation(clear=false){
-  if(clear)$('#conversation').innerHTML='';
-  $('#conversationWrap').classList.remove('hidden');
+function renderConversation(){
+  const chat=$('#conversation'); chat.innerHTML=''; $('#conversationWrap').classList.remove('hidden');
+  const w=state.path;
+  addBubble('assistant',`<div class="assistant-name">PowderSolve</div><p>${esc(w.Opening)}</p>`);
+  state.history.forEach(h=>{addBubble('assistant',`<p>${esc(h.question)}</p>`,'past');addBubble('user',`<p>${esc(h.option.label)}</p>`);});
+  const node=state.node&&w.Nodes[state.node];
+  $('#convoStep').textContent=node?`Question ${state.history.length+1}`:'Result';
+  if(node){
+    const el=addBubble('assistant',`<p>${esc(node.question)}</p><div class="answer-row">${node.options.map((o,i)=>`<button data-opt="${i}">${esc(o.label)}</button>`).join('')}</div>${state.history.length?'<button class="text-btn back-btn">← Change my last answer</button>':''}`);
+    el.querySelectorAll('[data-opt]').forEach(b=>b.addEventListener('click',()=>{const o=node.options[+b.dataset.opt];state.history.push({node:state.node,question:node.question,option:o});state.node=o.next;renderConversation();}));
+    el.querySelector('.back-btn')?.addEventListener('click',goBack);
+  } else showDiagnosis();
+  const target=!node?chat.querySelector('.bubble.result'):state.history.length?chat.lastElementChild:$('#conversationWrap');
+  target?.scrollIntoView({block:node&&state.history.length?'nearest':'start',behavior:'smooth'});
 }
-function askNext(){
-  const p=state.problem; const qs=splitQuestions(p.questions);
-  if(state.step>=Math.min(3,qs.length)){showDiagnosis();return;}
-  const q=qs[state.step];
-  addBubble('assistant',`<div class="assistant-name">PowderSolve</div><p>${esc(state.step===0?`Let’s narrow down ${p.problem.toLowerCase()}. ${q}`:q)}</p><div class="answer-row"><button data-answer="Yes">Yes</button><button data-answer="No">No</button><button data-answer="Not sure">Not sure</button><button data-answer="Skip">Skip</button></div>`);
-  $$('.answer-row button').slice(-4).forEach(b=>b.addEventListener('click',()=>{
-    state.answers.push({question:q,answer:b.dataset.answer});
-    addBubble('user',`<p>${esc(b.dataset.answer)}</p>`);
-    state.step++; askNext();
-  }));
+function goBack(){const h=state.history.pop();if(h){state.node=h.node;renderConversation();}}
+function recordSections(p,compact=false){
+  const sec=(cls,title,body)=>body?`<div class="${cls}"><h4>${title}</h4><p>${esc(body)}</p></div>`:'';
+  return sec('chat-section','What could be causing it',p.causes)
+    +sec('chat-section','What to verify',p.questions)
+    +sec('chat-solution','What to do',p.solution)
+    +sec('chat-section confirm','How to confirm',p.tests)
+    +sec('chat-section warning','Safety / restriction',p.safety);
 }
 function showDiagnosis(){
-  const p=state.problem; const matchedRules=state.data.Diagnostic_Rules.filter(r=>(r['Applies to problem IDs']||[]).includes(p.id) || clean(p.problem).toLowerCase().includes(clean(r.Trigger).toLowerCase())); const answerSummary=state.answers.map(a=>`${a.answer}: ${a.question}`).join(' · ');
-  addBubble('assistant',`<div class="assistant-name">PowderSolve</div><p>${esc(state.data.Conversation.result_intro)}</p><div class="result-title"><span class="mini-check">✓</span><div><b>${esc(p.problem)}</b><small>${esc(p.description||'')}</small></div></div>
-    ${p.causes?`<div class="chat-section"><h4>What could be causing it</h4><p>${esc(p.causes)}</p></div>`:''}
-    ${p.tests?`<div class="chat-section"><h4>What I would verify</h4><p>${esc(p.tests)}</p></div>`:''}
-    ${p.solution?`<div class="chat-solution"><h4>What to do next</h4><p>${esc(p.solution)}</p></div>`:''}
-    ${p.safety?`<div class="chat-section warning"><h4>Safety / restriction</h4><p>${esc(p.safety)}</p></div>`:''}
-    ${matchedRules.length?`<div class="chat-section rule-box"><h4>Rule-based check</h4>${matchedRules.map(r=>`<p>If <b>${esc(r['If / observation'])}</b>: ${esc(r['Possible cause'])} → ${esc(r['Next question / measurement'])} <span class="muted">(${esc(r.Status||'Draft')} rule)</span></p>`).join('')}</div>`:''}${(p.evidence||p.review)?`<div class="chat-meta">Evidence: ${esc(p.evidence||'—')} · Review: ${esc(p.review||'—')}</div>`:''}
+  const p=state.problem, w=state.path;
+  const focus=[...new Set(state.history.flatMap(h=>h.option.focus||[]))].filter(id=>id!==p.id).map(problemById).filter(Boolean);
+  const notes=state.history.map(h=>h.option.note).filter(Boolean);
+  const ids=new Set([p.id,...focus.map(f=>f.id)]);
+  const rules=state.data.Diagnostic_Rules.filter(r=>(r['Applies to problem IDs']||[]).some(i=>ids.has(i))||clean(p.problem).toLowerCase().includes(clean(r.Trigger).toLowerCase()));
+  const el=addBubble('assistant',`<div class="assistant-name">PowderSolve</div><p>${esc(state.data.Conversation.result_intro)}</p>
+    ${notes.length?`<div class="chat-section pointers"><h4>What your answers point to</h4><ul>${notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ul></div>`:''}
+    <div class="result-title"><span class="mini-check">✓</span><div><b>${esc(p.problem)}</b><small>${esc(p.description||'')}</small></div></div>
+    ${recordSections(p)}
+    ${focus.length?`<div class="related"><h4>Also check — based on your answers</h4>${focus.map(f=>`<details class="related-item"><summary><b>${esc(f.problem)}</b><small>${esc(f.description||'')}</small></summary>${recordSections(f)}<div class="chat-meta">Evidence: ${esc(f.evidence||'—')} · Review: ${esc(f.review||'—')}</div></details>`).join('')}</div>`:''}
+    ${rules.length?`<div class="chat-section rule-box"><h4>Rule-based check</h4>${rules.map(r=>`<p>If <b>${esc(r['If / observation'])}</b>: ${esc(r['Possible cause'])} → ${esc(r['Next question / measurement'])} <span class="muted">(${esc(r.Status||'Draft')} rule)</span></p>`).join('')}</div>`:''}
+    <div class="chat-meta">Evidence: ${esc(p.evidence||'—')} · Review: ${esc(p.review||'—')}${w['Pathway ID']?` · Question pathway: ${esc(w.Status||'Draft')}`:''}</div>
     <p class="chat-note">${esc(state.data.Conversation.source_note)}</p>
-    <div class="answer-row final-actions"><button id="againBtn">Ask me another question</button><button id="newProblemBtn">Start a new problem</button></div>`);
-  if(answerSummary) addBubble('user',`<p class="answer-summary"><b>What I told you:</b> ${esc(answerSummary)}</p>`,'summary-bubble');
-  $('#againBtn').addEventListener('click',()=>{state.step=Math.max(0,state.step-1);askNext();});
-  $('#newProblemBtn').addEventListener('click',()=>{state.problem=null;state.step=0;state.answers=[];$('#conversationWrap').classList.add('hidden');$('#diagSearch').focus();$('#diagSearch').value='';$('#searchHint').textContent='';});
+    <div class="answer-row final-actions">${state.history.length?'<button class="back-btn">← Change my last answer</button>':''}<button class="new-btn">Start a new problem</button></div>`,'result');
+  el.querySelector('.back-btn')?.addEventListener('click',goBack);
+  el.querySelector('.new-btn').addEventListener('click',()=>{state.problem=null;state.history=[];$('#conversationWrap').classList.add('hidden');$('#diagSearch').value='';$('#matchList').innerHTML='';liveSearch();$('#diagSearch').focus();});
 }
 function liveSearch(){
   const q=$('#diagSearch').value.trim(); const matches=searchProblems(q); const hint=$('#searchHint');

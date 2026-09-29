@@ -954,7 +954,7 @@
       "review": "Draft",
       "sources": "",
       "notes": "",
-      "search": "Pinholing / gassing Tiny holes; bubbles pinholes tiny holes bubbles outgassing"
+      "search": "Pinholing / gassing Tiny holes; bubbles pinholes tiny holes bubbles outgassing small holes pores"
     },
     {
       "id": "A-004",
@@ -1314,7 +1314,7 @@
       "review": "Draft",
       "sources": "",
       "notes": "",
-      "search": "Off-colour / shade shift Batch is lighter, darker, yellower, redder or bluer colour mismatch color shift shade difference"
+      "search": "Off-colour / shade shift Batch is lighter, darker, yellower, redder or bluer colour mismatch color shift shade difference colour different color different wrong colour"
     },
     {
       "id": "COL-002",
@@ -1938,6 +1938,647 @@
         "E-003",
         "T-005"
       ]
+    }
+  ],
+  "Diagnostic_Pathways": [
+    {
+      "Pathway ID": "PW-HOLES",
+      "Title": "Holes, pores or craters in the film",
+      "Entry problems": [
+        "A-003",
+        "A-002",
+        "P-008",
+        "P-006"
+      ],
+      "Opening": "This may be pinholing, gassing, or another trapped-gas/contamination defect. Let’s narrow it down before changing the process.",
+      "Start": "type",
+      "Status": "Draft",
+      "Basis": "A-002, A-003, P-003, P-006, P-007, P-008, P-009, T-002, F-010, R-001; VG-002, VG-003; Cure_Diagnostic_Matrix (cast iron, galvanized); Q-001, Q-011, Q-012",
+      "Nodes": {
+        "type": {
+          "question": "Look closely at the defect. Are they tiny pin-sized pores, or round craters with a raised rim?",
+          "basis": "VG-002, VG-003",
+          "options": [
+            {
+              "label": "Tiny pores / pinholes",
+              "next": "substrate",
+              "focus": [
+                "A-003"
+              ]
+            },
+            {
+              "label": "Round craters, often with a rim",
+              "next": "virgin",
+              "focus": [
+                "A-002"
+              ],
+              "note": "Craters with a rim are described as fish-eyes/craters, usually traced to contamination or incompatibility (VG-002)."
+            },
+            {
+              "label": "Not sure",
+              "next": "substrate",
+              "note": "Compare the defect with the Visual guide (pinholes vs craters) before acting."
+            }
+          ]
+        },
+        "substrate": {
+          "question": "What substrate are you coating?",
+          "basis": "Q-001; VG-003 ‘pinholes may originate in the substrate’",
+          "options": [
+            {
+              "label": "Casting / porous metal",
+              "next": "location",
+              "focus": [
+                "P-008"
+              ],
+              "note": "On castings, porosity, oil in pores, moisture and trapped gas are documented causes (P-008). Outgassing and slow heat-up can coexist (Cure matrix: cast iron)."
+            },
+            {
+              "label": "Galvanized steel",
+              "next": "location",
+              "focus": [
+                "P-007"
+              ],
+              "note": "On galvanized steel, surface condition and outgassing/pretreatment may affect adhesion and appearance (Cure matrix: galvanized)."
+            },
+            {
+              "label": "Sheet or fabricated steel / aluminium",
+              "next": "location"
+            },
+            {
+              "label": "Not sure",
+              "next": "location"
+            }
+          ]
+        },
+        "location": {
+          "question": "Are the holes concentrated around seams, joints, hollow sections or welds — or spread across the surface?",
+          "basis": "P-006, P-009",
+          "options": [
+            {
+              "label": "Seams, joints or hollow sections",
+              "next": "thickness",
+              "focus": [
+                "P-006"
+              ],
+              "note": "Trapped water in joints and poor dry-off are documented causes (P-006)."
+            },
+            {
+              "label": "Around welds",
+              "next": "thickness",
+              "focus": [
+                "P-009"
+              ],
+              "note": "Weld residue, heat scale and incomplete cleaning are documented weld-zone causes (P-009)."
+            },
+            {
+              "label": "Spread across the surface",
+              "next": "thickness"
+            },
+            {
+              "label": "Not sure",
+              "next": "thickness"
+            }
+          ]
+        },
+        "thickness": {
+          "question": "Where the holes appear, is the film thicker than the specified range?",
+          "basis": "A-003 cause ‘thick film’; Q-012; T-002",
+          "options": [
+            {
+              "label": "Yes, above specification",
+              "next": "air",
+              "focus": [
+                "T-002"
+              ],
+              "note": "Thick film is a documented contributor to pinholing (A-003)."
+            },
+            {
+              "label": "No, within specification",
+              "next": "air"
+            },
+            {
+              "label": "Not measured",
+              "next": "air",
+              "note": "Measure dry film thickness at the defect locations."
+            }
+          ]
+        },
+        "air": {
+          "question": "Has the compressed air been checked for water or oil recently?",
+          "basis": "A-003 cause ‘compressed air’; F-010; Q-013",
+          "options": [
+            {
+              "label": "Water or oil found",
+              "next": null,
+              "focus": [
+                "F-010"
+              ],
+              "note": "Compressed-air contamination is a documented cause (A-003, F-010)."
+            },
+            {
+              "label": "Not checked",
+              "next": null,
+              "focus": [
+                "F-010"
+              ],
+              "note": "Drain and inspect filters and check air quality (F-010)."
+            },
+            {
+              "label": "Checked and clean",
+              "next": null
+            }
+          ]
+        },
+        "virgin": {
+          "question": "Do the craters also appear with fresh virgin powder, or only when reclaim is used?",
+          "basis": "Q-011; A-002; R-001",
+          "options": [
+            {
+              "label": "Only with reclaim",
+              "next": "air",
+              "focus": [
+                "R-001"
+              ],
+              "note": "Reclaim contamination is a documented source (R-001)."
+            },
+            {
+              "label": "Also with virgin powder",
+              "next": "air",
+              "focus": [
+                "P-003"
+              ],
+              "note": "Substrate, rack and handling contamination remain in play (P-003)."
+            },
+            {
+              "label": "Not sure",
+              "next": "air",
+              "note": "Run a controlled panel with virgin powder only (A-002)."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "Pathway ID": "PW-ADHESION",
+      "Title": "Peeling or poor adhesion",
+      "Entry problems": [
+        "P-001",
+        "P-002",
+        "C-001"
+      ],
+      "Opening": "Peeling can come from surface preparation, cure, moisture or the substrate. Let’s narrow it down before changing the process — especially before touching the oven.",
+      "Start": "interface",
+      "Status": "Draft",
+      "Basis": "P-001..P-010, C-001, C-012; VG-010; RULE-ADH-001, RULE-ADH-002; Q-001, Q-008",
+      "Nodes": {
+        "interface": {
+          "question": "Where the coating has lifted, what is underneath?",
+          "basis": "P-001/P-002 ‘inspect failure interface’; VG-010",
+          "options": [
+            {
+              "label": "Clean bare metal",
+              "next": "substrate",
+              "focus": [
+                "P-003",
+                "P-004"
+              ],
+              "note": "Separation at the metal: keep cleaning and conversion coating in view (P-003, P-004)."
+            },
+            {
+              "label": "Residue, staining or corrosion under the film",
+              "next": "substrate",
+              "focus": [
+                "P-005",
+                "P-004"
+              ],
+              "note": "Residue or corrosion under the film: check rinsing and conversion coating (P-005, P-004)."
+            },
+            {
+              "label": "The film itself is soft or splits within the layer",
+              "next": "substrate",
+              "focus": [
+                "C-001"
+              ],
+              "note": "A soft film is the documented symptom of under-cure (C-001)."
+            },
+            {
+              "label": "Not sure",
+              "next": "substrate",
+              "note": "Record the failure interface before sanding or recoating (VG-010)."
+            }
+          ]
+        },
+        "substrate": {
+          "question": "What substrate is failing?",
+          "basis": "Q-001; P-007, P-008, P-010",
+          "options": [
+            {
+              "label": "Galvanized steel",
+              "next": "pmt",
+              "focus": [
+                "P-007"
+              ]
+            },
+            {
+              "label": "Casting",
+              "next": "pmt",
+              "focus": [
+                "P-008"
+              ]
+            },
+            {
+              "label": "Steel/aluminium — but a new supplier or lot",
+              "next": "pmt",
+              "focus": [
+                "P-010"
+              ]
+            },
+            {
+              "label": "Steel/aluminium — unchanged",
+              "next": "pmt"
+            }
+          ]
+        },
+        "pmt": {
+          "question": "Was part metal temperature (PMT) measured with a profiler for this load, and compared with the product TDS?",
+          "basis": "Q-008; RULE-ADH-001; C-012",
+          "options": [
+            {
+              "label": "Yes — meets the TDS",
+              "next": "pretreat"
+            },
+            {
+              "label": "Yes — below the TDS",
+              "next": "pretreat",
+              "focus": [
+                "C-001"
+              ],
+              "note": "PMT/time below the TDS is a documented under-cure cause (C-001). Correct against the profile, not the oven display."
+            },
+            {
+              "label": "No — only the oven display",
+              "next": "pretreat",
+              "focus": [
+                "C-012",
+                "C-001"
+              ],
+              "note": "The oven display does not prove part temperature (C-012). Profile the slowest-heating location against the TDS before any oven change."
+            }
+          ]
+        },
+        "pretreat": {
+          "question": "Are pretreatment bath records and dry-off within your chemical supplier’s limits?",
+          "basis": "RULE-ADH-002; P-004, P-006",
+          "options": [
+            {
+              "label": "Yes, all within limits",
+              "next": null
+            },
+            {
+              "label": "Records missing or out of limits",
+              "next": null,
+              "focus": [
+                "P-004"
+              ],
+              "note": "Route to the pretreatment checklist (RULE-ADH-002, P-004)."
+            },
+            {
+              "label": "Parts are sometimes still wet at the booth",
+              "next": null,
+              "focus": [
+                "P-006"
+              ],
+              "note": "Coating wet parts is a documented cause (P-006)."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "Pathway ID": "PW-CORNERS",
+      "Title": "Corners, recesses or edges not coating",
+      "Entry problems": [
+        "E-003",
+        "T-005",
+        "E-007",
+        "T-004"
+      ],
+      "Opening": "Poor coverage in corners and recesses is often electrostatic (Faraday cage) or grounding-related. Let’s check before adjusting the guns.",
+      "Start": "where",
+      "Status": "Draft",
+      "Basis": "E-002, E-003, E-007, T-004, T-005, Q-001; RULE-APP-001",
+      "Nodes": {
+        "where": {
+          "question": "Where exactly is the coverage poor?",
+          "basis": "E-003, T-004, E-002, E-007",
+          "options": [
+            {
+              "label": "Inside recesses, slots or inside corners",
+              "next": "ground",
+              "focus": [
+                "E-003",
+                "T-005"
+              ]
+            },
+            {
+              "label": "Outside edges — bare or pulled back",
+              "next": "ground",
+              "focus": [
+                "T-004",
+                "E-002"
+              ]
+            },
+            {
+              "label": "Back side or hidden faces",
+              "next": "ground",
+              "focus": [
+                "E-007"
+              ]
+            }
+          ]
+        },
+        "ground": {
+          "question": "Has the ground been measured at the hanger/contact point recently?",
+          "basis": "E-001, E-003, E-007 checks; Q-001",
+          "options": [
+            {
+              "label": "Yes, within limits",
+              "next": "cloud"
+            },
+            {
+              "label": "No, or hangers have coating build-up",
+              "next": "cloud",
+              "focus": [
+                "Q-001"
+              ],
+              "note": "Paint build-up and worn contacts cause grounding drift (Q-001)."
+            }
+          ]
+        },
+        "cloud": {
+          "question": "Is the voltage high with a wide powder cloud?",
+          "basis": "RULE-APP-001; E-003 causes",
+          "options": [
+            {
+              "label": "Yes",
+              "next": null,
+              "focus": [
+                "E-003"
+              ],
+              "note": "High voltage with a wide cloud points to Faraday cage / electrostatic repulsion (RULE-APP-001). Tune in small increments within the equipment instructions."
+            },
+            {
+              "label": "No",
+              "next": null
+            },
+            {
+              "label": "Not sure",
+              "next": null,
+              "note": "Record voltage, gun distance and spray pattern before changing anything."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "Pathway ID": "PW-COLOUR",
+      "Title": "Colour or shade is different",
+      "Entry problems": [
+        "COL-001",
+        "A-009",
+        "C-004"
+      ],
+      "Opening": "Colour differences can come from cure, film thickness, the batch, the substrate or how it’s being compared. Let’s narrow it down.",
+      "Start": "how",
+      "Status": "Draft",
+      "Basis": "COL-001..COL-016, C-002, R-002; RULE-COL-001, RULE-COL-002; VG-008",
+      "Nodes": {
+        "how": {
+          "question": "How does the colour differ?",
+          "basis": "COL-002, COL-003, COL-004, COL-005, COL-011",
+          "options": [
+            {
+              "label": "Whites or light colours have gone yellow/cream",
+              "next": "pmt",
+              "focus": [
+                "COL-002"
+              ]
+            },
+            {
+              "label": "Darker or duller after cure",
+              "next": "pmt",
+              "focus": [
+                "COL-003"
+              ]
+            },
+            {
+              "label": "Different between batches of the same code",
+              "next": "pmt",
+              "focus": [
+                "COL-004"
+              ]
+            },
+            {
+              "label": "Different between areas of the same part",
+              "next": "areas",
+              "focus": [
+                "COL-005"
+              ]
+            },
+            {
+              "label": "Unexpected tint or specks",
+              "next": null,
+              "focus": [
+                "COL-011",
+                "R-002"
+              ],
+              "note": "Unexpected tint or specks: check changeover cleaning and reclaim (COL-011, R-002)."
+            }
+          ]
+        },
+        "areas": {
+          "question": "What do the different areas have in common?",
+          "basis": "COL-006, COL-013, COL-016",
+          "options": [
+            {
+              "label": "Thin sections vs thick sections",
+              "next": "pmt",
+              "focus": [
+                "COL-006"
+              ],
+              "note": "Thin and thick sections heat at different rates (COL-006). Profile both locations (RULE-COL-001)."
+            },
+            {
+              "label": "Follows film thickness",
+              "next": "pmt",
+              "focus": [
+                "COL-013"
+              ]
+            },
+            {
+              "label": "Follows position in the oven",
+              "next": "pmt",
+              "focus": [
+                "COL-016"
+              ]
+            },
+            {
+              "label": "Not sure",
+              "next": "pmt",
+              "note": "Map colour, gloss, thickness and PMT at the same locations (COL-005)."
+            }
+          ]
+        },
+        "pmt": {
+          "question": "Was PMT profiled at both the hottest/thinnest and slowest/thickest points?",
+          "basis": "RULE-COL-002; C-002; C-011",
+          "options": [
+            {
+              "label": "Yes — within the TDS window",
+              "next": "compare"
+            },
+            {
+              "label": "Yes — hottest point exceeds TDS guidance",
+              "next": "compare",
+              "focus": [
+                "C-002"
+              ],
+              "note": "Investigate overbake/thermal exposure while preserving minimum cure (RULE-COL-002, C-002)."
+            },
+            {
+              "label": "Not profiled",
+              "next": "compare",
+              "note": "Profile the hottest/thinnest and slowest/thickest locations against the TDS."
+            }
+          ]
+        },
+        "compare": {
+          "question": "Is the colour being compared against a retained standard panel under controlled lighting?",
+          "basis": "COL-015; VG-008",
+          "options": [
+            {
+              "label": "Yes",
+              "next": null
+            },
+            {
+              "label": "No",
+              "next": null,
+              "focus": [
+                "COL-015"
+              ],
+              "note": "Visual comparison under uncontrolled lighting is not sufficient for acceptance (VG-008)."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "Pathway ID": "PW-NOSTICK",
+      "Title": "Powder won’t stick",
+      "Entry problems": [
+        "E-001",
+        "E-005",
+        "E-004"
+      ],
+      "Opening": "Poor attachment is usually charging, grounding, powder feed or powder condition. Let’s find which.",
+      "Start": "when",
+      "Status": "Draft",
+      "Basis": "E-001, E-004, E-005, F-001, F-006, Q-001, R-003; RULE-FEED-001; Q-011",
+      "Nodes": {
+        "when": {
+          "question": "When does the powder fail to stay on?",
+          "basis": "E-001, E-004, E-005",
+          "options": [
+            {
+              "label": "It doesn’t attach well while spraying",
+              "next": "ground",
+              "focus": [
+                "E-001"
+              ]
+            },
+            {
+              "label": "It attaches, then falls off before the oven",
+              "next": "ground",
+              "focus": [
+                "E-005"
+              ]
+            },
+            {
+              "label": "It bounces off, leaving bare spots as the film builds",
+              "next": "ground",
+              "focus": [
+                "E-004"
+              ]
+            }
+          ]
+        },
+        "ground": {
+          "question": "Has the ground been measured at the hanger/contact point recently?",
+          "basis": "E-001, E-003, E-007 checks; Q-001",
+          "options": [
+            {
+              "label": "Yes, within limits",
+              "next": "feed"
+            },
+            {
+              "label": "No, or hangers have coating build-up",
+              "next": "feed",
+              "focus": [
+                "Q-001"
+              ],
+              "note": "Poor grounding is a documented cause of weak charging and transfer (E-001, Q-001)."
+            }
+          ]
+        },
+        "feed": {
+          "question": "Is the powder flowing steadily from the gun?",
+          "basis": "F-001, F-006; RULE-FEED-001",
+          "options": [
+            {
+              "label": "Yes, steady",
+              "next": "reclaim"
+            },
+            {
+              "label": "Surging or spurting",
+              "next": "reclaim",
+              "focus": [
+                "F-001"
+              ],
+              "note": "Check the dryer, filters, drains and air supply under load (RULE-FEED-001)."
+            },
+            {
+              "label": "Low output",
+              "next": "reclaim",
+              "focus": [
+                "F-006"
+              ]
+            }
+          ]
+        },
+        "reclaim": {
+          "question": "Does it also happen with fresh virgin powder, or only with reclaim?",
+          "basis": "E-001 ‘compare virgin vs reclaim’; Q-011",
+          "options": [
+            {
+              "label": "Only with reclaim",
+              "next": null,
+              "focus": [
+                "R-003"
+              ]
+            },
+            {
+              "label": "With virgin powder too",
+              "next": null
+            },
+            {
+              "label": "Not sure",
+              "next": null,
+              "note": "Compare virgin and reclaim under the same settings (E-001)."
+            }
+          ]
+        }
+      }
     }
   ],
   "Cure_Profiles": [
