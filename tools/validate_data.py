@@ -65,6 +65,17 @@ for r in d.get("Cure_Product_Windows", []):
         elif pt[1] == pt[2]:
             warnings.append(f"{r.get('Product ID')}: min == max at {pt[0]}°C — verify against source")
 
+hm = d.get("Heat_Up_Model")
+if hm:
+    for m in hm.get("Materials", []):
+        if not (m.get("density", 0) > 0 and m.get("specific_heat", 0) > 0):
+            err(f"Heat_Up_Model {m.get('id')}: density/specific_heat missing")
+        for s in m.get("sources", []):
+            if s not in source_ids:
+                err(f"Heat_Up_Model {m.get('id')}: source '{s}' not in Sources")
+        if not m.get("sources"):
+            err(f"Heat_Up_Model {m.get('id')}: no source")
+
 for r in d.get("Diagnostic_Rules", []):
     for i in r.get("Applies to problem IDs", []):
         if i not in pid_set:

@@ -172,6 +172,92 @@ function renderCure(){
  $$('#cureCards .cure-open').forEach(b=>b.onclick=()=>{const r=state.data.Cure_Profiles.find(x=>x['Profile ID']===b.dataset.profile);if(r)openCureProfile(r);});
  $('#cureMatrix').innerHTML=scheduleBlock+productBlock+`<section class="cure-subsection"><div class="section-head"><div><p class="eyebrow">DIAGNOSTIC CONTEXT</p><h3>Cure troubleshooting</h3></div></div>${state.data.Cure_Diagnostic_Matrix.map(r=>`<article class="record"><h3>${esc(r.Scenario)}</h3><p><b>What can happen:</b> ${esc(r['What can happen'])}</p><p><b>What to measure:</b> ${esc(r['What to measure'])}</p><p><b>Diagnostic direction:</b> ${esc(r['Typical diagnostic direction'])}</p><p class="muted"><b>Do not assume:</b> ${esc(r['Do not assume'])}</p></article>`).join('')}</section>`;
 }
+// ---- Heat-up time by metal thickness (calibrated estimate) ----
+const num=v=>{const n=parseFloat(String(v).replace(',','.'));return Number.isFinite(n)?n:null;};
+const fToC=f=>Math.round((f-32)*5/9);
+const fmtMin=s=>{const m=s/60;return m<10?m.toFixed(1):Math.round(m).toString();};
+function huMaterials(){return state.data.Heat_Up_Model?.Materials||[];}
+function huMat(id){return huMaterials().find(m=>m.id===id)||huMaterials()[0];}
+// Heated depth: a part open on both faces heats through half its thickness from each side.
+const huDepth=(mm,sides)=>mm/1000*(sides===2?0.5:1);
+function huTargets(){
+  const opts=[{v:'custom',label:'My product TDS (enter below)',group:''}];
+  state.data.Cure_Profiles.forEach(r=>(r['Temperatures °F']||[]).forEach((f,i)=>opts.push({v:`cp|${r['Profile ID']}|${i}`,group:`IFS · ${r['Profile name']}`,label:`${fToC(f)}°C (${f}°F) · ${r['Cure time min'][i]} min`,pmt:fToC(f),dwell:r['Cure time min'][i]})));
+  state.data.Cure_Product_Windows.forEach(r=>(r['PMT / time points']||[]).forEach((p,i)=>opts.push({v:`pw|${r['Product ID']}|${i}`,group:`PPG · ${r.Product}`,label:`${p[0]}°C · ${p[1]}–${p[2]} min`,pmt:p[0],dwell:p[1]})));
+  return opts;
+}
+function initHeatUp(){
+  if(!state.data.Heat_Up_Model)return $('#heatupCard')?.remove();
+  const matOpts=huMaterials().map(m=>`<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('');
+  $('#huMat').innerHTML=matOpts; $('#huRefMat').innerHTML=matOpts;
+  const groups={}; huTargets().forEach(o=>(groups[o.group]??=[]).push(o));
+  $('#huTarget').innerHTML=Object.entries(groups).map(([g,os])=>{const h=os.map(o=>`<option value="${esc(o.v)}">${esc(o.label)}</option>`).join('');return g?`<optgroup label="${esc(g)}">${h}</optgroup>`:h;}).join('');
+  const hm=state.data.Heat_Up_Model;
+  $('#huMethod').innerHTML=`<p>${esc(hm.Method)}</p><p>${esc(hm['Why calibration'])}</p><h4>Assumptions</h4><ul>${hm.Assumptions.map(a=>`<li>${esc(a)}</li>`).join('')}</ul><h4>Material values</h4><table class="cure-data-table"><thead><tr><th>Metal</th><th>Density (kg/m³)</th><th>Specific heat (J/kg·K)</th><th>Note</th></tr></thead><tbody>${huMaterials().map(m=>`<tr><td>${esc(m.name)}</td><td>${m.density}</td><td>${m.specific_heat}</td><td>${esc(m.note||'')} <span class="muted">${m.sources.map(s=>esc(sourceName(s))).join('; ')}</span></td></tr>`).join('')}</tbody></table><p class="muted"><b>Do not:</b> ${esc(hm['Do not'])}</p>`;
+  $$('#heatupCard input,#heatupCard select').forEach(el=>el.addEventListener('input',renderHeatUp));
+  renderHeatUp();
+}
+function renderHeatUp(){
+  const out=$('#huOut'); if(!out)return;
+  const mat=huMat($('#huMat').value), sides=+$('#huSides').value;
+  const thk=[...new Set(String($('#huThk').value).split(/[\s,;]+/).map(num).filter(n=>n&&n>0&&n<=200))].sort((a,b)=>a-b).slice(0,12);
+  const air=num($('#huAir').value), start=num($('#huStart').value);
+  const tsel=$('#huTarget').value; $('#huCustom').classList.toggle('hidden',tsel!=='custom');
+  const tgt=tsel==='custom'?{pmt:num($('#huPmt').value),dwell:num($('#huDwell').value),label:'your TDS'}:huTargets().find(o=>o.v===tsel);
+  const refMat=huMat($('#huRefMat').value), refSides=+$('#huRefSides').value, refThk=num($('#huRefThk').value), refT=num($('#huRefT').value), refMin=num($('#huRefMin').value);
+  const cap=m=>m.density*m.specific_heat;
+  const msgs=[];
+  if(!thk.length){out.innerHTML='<div class="empty-state">Enter one or more thicknesses in mm.</div>';return;}
+  // Reference for relative times: the measured part if given, otherwise the thinnest listed part.
+  const ref=refThk?{load:cap(refMat)*huDepth(refThk,refSides),label:`${refThk} mm ${refMat.name.toLowerCase()}`}:{load:cap(mat)*huDepth(thk[0],sides),label:`${thk[0]} mm`};
+  // Calibration: derive this oven's heat-transfer rate from one real reading.
+  let h=null;
+  const calibInputs=[refThk,refT,refMin].some(v=>v!==null);
+  if(calibInputs){
+    if([air,start,refThk,refT,refMin].some(v=>v===null))msgs.push('To use your profiler reading, also fill in oven air temperature, start temperature, thickness, reached °C and minutes.');
+    else if(!(refT>start&&refT<air))msgs.push('The reading must be above the start temperature and below the oven air temperature.');
+    else if(refMin<=0)msgs.push('Minutes must be above zero.');
+    else h=cap(refMat)*huDepth(refThk,refSides)/(refMin*60)*Math.log((air-start)/(air-refT));
+  }
+  let tgtOk=tgt&&tgt.pmt!==null&&tgt.pmt!==undefined;
+  if(tgtOk&&air!==null&&tgt.pmt>=air){msgs.push(`Oven air (${air}°C) must be above the target PMT (${tgt.pmt}°C) — the part can never reach it.`);tgtOk=false;}
+  if(tgtOk&&start!==null&&tgt.pmt<=start)tgtOk=false;
+  const canTime=h&&tgtOk&&air!==null&&start!==null;
+  const rows=thk.map(t=>{
+    const load=cap(mat)*huDepth(t,sides), rel=load/ref.load;
+    const tau=h?load/h:null;
+    const reach=canTime?tau*Math.log((air-start)/(air-tgt.pmt)):null;
+    return {t,rel,tau,reach};
+  });
+  const dwell=tgtOk&&tgt.dwell!=null?tgt.dwell:null;
+  const table=`<table class="cure-data-table hu-table"><thead><tr><th>Thickness</th><th>Relative heat-up <span class="muted">(vs ${esc(ref.label)})</span></th><th>Reaches ${tgtOk?`${tgt.pmt}°C`:'PMT'}</th><th>+ time at PMT</th><th>Earliest out of oven</th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${r.t} mm</b></td><td>${r.rel.toFixed(r.rel<10?2:1)}×</td><td>${r.reach!==null?`<b>${fmtMin(r.reach)} min</b>`:'—'}</td><td>${dwell!==null?`${dwell} min`:'—'}</td><td>${r.reach!==null&&dwell!==null?`<b>≈ ${fmtMin(r.reach+dwell*60)} min</b>`:'—'}</td></tr>`).join('')}</tbody></table>`;
+  let hint='';
+  if(!canTime){
+    const need=[];
+    if(air===null)need.push('oven air temperature'); if(!tgtOk)need.push('a cure target'); if(!h)need.push('one profiler reading from your oven (step 3)');
+    hint=`<p class="hu-hint">Showing relative times only. To get minutes, add ${need.join(', ')}.</p>`;
+  }
+  let chart='', insight='';
+  if(canTime){
+    const pick=rows.length>6?[0,1,2,Math.floor(rows.length/2),rows.length-2,rows.length-1].map(i=>rows[i]):rows;
+    const tMax=Math.max(...rows.map(r=>r.reach+(dwell||0)*60))*1.15;
+    chart=huChart(pick,air,start,tgt.pmt,tMax);
+    const thin=rows[0], thick=rows[rows.length-1];
+    if(rows.length>1)insight=`<div class="notice warning"><b>Mixed loads:</b> ${thick.t} mm reaches ${tgt.pmt}°C about <b>${fmtMin(thick.reach-thin.reach)} min</b> after ${thin.t} mm. If they run together, the thin section spends that extra time at or above PMT — check the TDS upper limit, and profile both the thinnest and the heaviest location.</div>`;
+  }
+  out.innerHTML=`${msgs.map(m=>`<div class="notice warning">${esc(m)}</div>`).join('')}${table}${hint}${chart}${insight}<div class="notice cure-warning"><b>Estimate only.</b> ${canTime?`Calibrated from your reading of ${refThk} mm ${esc(refMat.name.toLowerCase())} reaching ${refT}°C after ${refMin} min. Valid only for the same oven, settings, line speed and loading.`:'Relative times assume the same oven and loading for every thickness.'} ${tgtOk&&tsel!=='custom'?`The cure target is ${esc(tgt.group||'')} reference data — your product TDS takes precedence.`:''} Confirm with a profiler on the slowest-heating location before setting a production cycle.</div>`;
+}
+function huChart(rows,air,start,pmt,tMax){
+  const w=820,h=320,left=58,right=24,top=20,bottom=46,pw=w-left-right,ph=h-top-bottom;
+  const yMin=Math.floor(start/10)*10, yMax=Math.ceil(air/10)*10;
+  const x=s=>left+s/tMax*pw, y=T=>top+ph-(T-yMin)/(yMax-yMin)*ph;
+  const colors=['#1f7a8c','#2f9e77','#6b4eff','#c77b19','#b42318','#334e68'];
+  const lines=rows.map((r,k)=>{const pts=[];for(let i=0;i<=160;i++){const s=tMax*i/160;pts.push(`${x(s).toFixed(1)},${y(air-(air-start)*Math.exp(-s/r.tau)).toFixed(1)}`);}return `<polyline points="${pts.join(' ')}" fill="none" stroke="${colors[k%6]}" stroke-width="2.5"/><circle cx="${x(r.reach)}" cy="${y(pmt)}" r="4" fill="${colors[k%6]}"/>`;}).join('');
+  const minTicks=[];const step=tMax/60>40?10:tMax/60>15?5:2;for(let m=0;m*60<=tMax;m+=step)minTicks.push(m);
+  const xt=minTicks.map(m=>`<text x="${x(m*60)}" y="${h-26}" text-anchor="middle" font-size="11" fill="#52677a">${m}</text>`).join('');
+  const yt=[yMin,Math.round((yMin+yMax)/2),yMax].map(v=>`<line x1="${left}" y1="${y(v)}" x2="${left+pw}" y2="${y(v)}" stroke="#e3e9ef"/><text x="${left-8}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="#52677a">${v}</text>`).join('');
+  return `<div class="cure-graph"><svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Estimated part metal temperature over time by thickness">${yt}<line x1="${left}" y1="${y(pmt)}" x2="${left+pw}" y2="${y(pmt)}" stroke="#b42318" stroke-dasharray="6 4"/><text x="${left+pw-4}" y="${y(pmt)+14}" text-anchor="end" font-size="11" fill="#b42318">target PMT ${pmt}°C</text><line x1="${left}" y1="${y(air)}" x2="${left+pw}" y2="${y(air)}" stroke="#9fb0c0" stroke-dasharray="2 4"/><text x="${left+pw-4}" y="${y(air)-6}" text-anchor="end" font-size="11" fill="#52677a">oven air ${air}°C</text>${lines}${xt}<text x="${w/2}" y="${h-6}" text-anchor="middle" font-size="12" fill="#52677a">Minutes in oven (estimate)</text><text transform="translate(15 ${h/2}) rotate(-90)" text-anchor="middle" font-size="12" fill="#52677a">Part metal temp (°C)</text></svg><div class="hu-legend">${rows.map((r,k)=>`<span><i style="background:${colors[k%6]}"></i>${r.t} mm · ${fmtMin(r.reach)} min</span>`).join('')}<span class="muted">● = reaches target PMT</span></div></div>`;
+}
 function switchTab(tab){state.tab=tab;$$('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));$$('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+tab));if(tab==='knowledge')renderAllProblems();}
 async function boot(){
  state.data=await fetch('data.json').then(r=>r.json());
@@ -180,7 +266,7 @@ async function boot(){
  $('#resetDiag').addEventListener('click',()=>{$('#diagSearch').value='';$('#matchList').innerHTML='';$('#searchHint').innerHTML='';$('#conversationWrap').classList.add('hidden');state.problem=null;liveSearch();$('#diagSearch').focus();});
  $$('.tabs button').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.tab)));
  $('#safetyBtn').addEventListener('click',()=>$('#safetyModal').classList.remove('hidden')); $('#closeCure').addEventListener('click',()=>$('#cureModal').classList.add('hidden')); $('#cureModal').addEventListener('click',e=>{if(e.target.id==='cureModal')$('#cureModal').classList.add('hidden');});$('#closeSafety').addEventListener('click',()=>$('#safetyModal').classList.add('hidden'));$('#ackSafety').addEventListener('click',()=>$('#safetyModal').classList.add('hidden'));
- renderAllProblems(); renderVisual(); renderSources(); renderCure(); liveSearch();
+ renderAllProblems(); renderVisual(); renderSources(); renderCure(); initHeatUp(); liveSearch();
  if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 }
 boot();

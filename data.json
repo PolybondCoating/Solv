@@ -3051,6 +3051,22 @@
       "Reliability / limitation": "Primary manufacturer technical data; product-specific",
       "Action": "Keep product name and curve ID attached to all displayed values",
       "URL": "https://buyat.ppg.com/rep_powder/PDFs/CDPFILES/PCT70157.pdf"
+    },
+    {
+      "Source ID": "SRC-PHYS-CP",
+      "Source / material": "Engineering ToolBox — Metals: specific heat capacities",
+      "Use in knowledge base": "Specific heat values for the heat-up estimator (carbon steel 0.49, aluminium 0.91, cast iron 0.46 kJ/kg·K)",
+      "Reliability / limitation": "Typical handbook values; alloys and temperature change them slightly",
+      "Action": "Used only in the calibrated heat-up estimate",
+      "URL": "https://www.engineeringtoolbox.com/specific-heat-metals-d_152.html"
+    },
+    {
+      "Source ID": "SRC-PHYS-DENSITY",
+      "Source / material": "Engineering ToolBox — Metals and alloys: densities",
+      "Use in knowledge base": "Density values for the heat-up estimator (carbon steel 7850, aluminium 2712, cast iron 6800–7800 kg/m³)",
+      "Reliability / limitation": "Typical handbook values; cast iron varies by grade",
+      "Action": "Used only in the calibrated heat-up estimate",
+      "URL": "https://www.engineeringtoolbox.com/metal-alloys-densities-d_50.html"
     }
   ],
   "Conversation": {
@@ -3371,5 +3387,64 @@
       "Status": "Source verified",
       "Important": "Exact manufacturer-published product data. Product TDS/cure curve is controlling; do not generalize this window to another powder."
     }
-  ]
+  ],
+  "Heat_Up_Model": {
+    "Status": "Estimate — calibrated to the user's own profiler measurement",
+    "Category": "User's actual oven profile (estimate). Not manufacturer cure data.",
+    "Method": "Lumped-capacitance heating (Newton's law of heating): the part is treated as one uniform temperature that rises toward the oven air temperature. Time to reach a temperature scales with density × specific heat × heated thickness, divided by the oven's heat-transfer rate.",
+    "Why calibration": "The oven's heat-transfer rate depends on airflow, load, spacing, fixtures and oven design, so it cannot be looked up. PowderSolve derives it from one real profiler reading and applies it to other thicknesses in the same oven and loading.",
+    "Assumptions": [
+      "Same oven, zone settings, line speed, loading pattern and part spacing as the calibration run.",
+      "Heat reaches the part mainly by convection from oven air; radiant/IR ovens are not modelled.",
+      "Parts open on both faces (sheet, plate, open profiles) heat through half their thickness from each side; closed box sections or parts shielded on one face heat through their full thickness from one side.",
+      "The part is treated as uniform in temperature through its thickness, which is a reasonable approximation for metal sections in convection ovens.",
+      "Material values are typical handbook figures; alloys vary."
+    ],
+    "Do not": "Do not set production cure cycles from this estimate. Profile the slowest-heating and hottest locations and compare with the product TDS.",
+    "Materials": [
+      {
+        "id": "steel",
+        "name": "Mild / carbon steel",
+        "density": 7850,
+        "specific_heat": 490,
+        "sources": [
+          "SRC-PHYS-DENSITY",
+          "SRC-PHYS-CP"
+        ]
+      },
+      {
+        "id": "galv",
+        "name": "Galvanized steel",
+        "density": 7850,
+        "specific_heat": 490,
+        "note": "Zinc layer is thin relative to the steel; steel values used.",
+        "sources": [
+          "SRC-PHYS-DENSITY",
+          "SRC-PHYS-CP"
+        ]
+      },
+      {
+        "id": "al",
+        "name": "Aluminium",
+        "density": 2712,
+        "specific_heat": 910,
+        "note": "Pure aluminium value; common alloys are 2720–2770 kg/m³.",
+        "sources": [
+          "SRC-PHYS-DENSITY",
+          "SRC-PHYS-CP"
+        ]
+      },
+      {
+        "id": "ci",
+        "name": "Cast iron",
+        "density": 7300,
+        "specific_heat": 460,
+        "note": "Density varies 6800–7800 kg/m³; midpoint used.",
+        "sources": [
+          "SRC-PHYS-DENSITY",
+          "SRC-PHYS-CP"
+        ]
+      }
+    ]
+  }
 }

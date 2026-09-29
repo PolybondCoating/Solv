@@ -25,6 +25,15 @@ Every cure record's `Source` / `Source ID` must match a `Source ID` in `Sources`
 
 `Diagnostic_Pathways` holds branching question trees. Each pathway lists its `Entry problems`, a `Start` node and `Nodes`. Each option has a `next` node (or `null` to finish) and may add `focus` (problem IDs to show under "Also check") and a `note` (why). Every question and note cites the existing records it is derived from (`basis`); pathways must not introduce new technical values. Problems without a pathway fall back to a simple question list built from their own `questions` field. All pathways are currently **Draft**.
 
+## Heat-up time by metal thickness (Cure profiles tab)
+
+`Heat_Up_Model` in data.json drives an estimator of how long different thicknesses take to reach the cure PMT. It is **not** the removed illustrative model:
+
+- It never assumes an oven heat-transfer rate. Relative times (e.g. 6 mm steel ≈ 2× 3 mm steel) come from density × specific heat × heated thickness alone.
+- Minutes appear only after the user enters one real profiler reading from their own oven, which calibrates the model; it is labelled as an estimate for that oven and loading.
+- Material constants are sourced (`SRC-PHYS-CP`, `SRC-PHYS-DENSITY`) and live in data.json, not app.js.
+- Cure targets come from the manufacturer data or the user's own TDS.
+
 ## Before committing data changes
 
 ```bash
