@@ -237,33 +237,41 @@ function renderHeatUp(){
     if(air===null)need.push('oven air temperature'); if(!tgtOk)need.push('a cure target'); if(!h)need.push('one profiler reading from your oven (step 3)');
     hint=`<p class="hu-hint">Showing relative times only. To get minutes, add ${need.join(', ')}.</p>`;
   }
-  let chart=canTime?'':huRelChart(rows,ref.label), insight='';
+  let chart='', insight='';
+  const pick=rows.length>8?[0,1,2,3,Math.floor(rows.length/2),rows.length-3,rows.length-2,rows.length-1].map(i=>rows[i]):rows;
   if(canTime){
-    const pick=rows.length>6?[0,1,2,Math.floor(rows.length/2),rows.length-2,rows.length-1].map(i=>rows[i]):rows;
     const tMax=Math.max(...rows.map(r=>r.reach+(dwell||0)*60))*1.15;
-    chart=huChart(pick,air,start,tgt.pmt,tMax);
+    chart=huChart({rows:pick.map(r=>({t:r.t,tau:r.tau,reach:r.reach})),air,start,pmt:tgt.pmt,tMax,unit:'min'});
     const thin=rows[0], thick=rows[rows.length-1];
     if(rows.length>1)insight=`<div class="notice warning"><b>Mixed loads:</b> ${thick.t} mm reaches ${tgt.pmt}°C about <b>${fmtMin(thick.reach-thin.reach)} min</b> after ${thin.t} mm. If they run together, the thin section spends that extra time at or above PMT — check the TDS upper limit, and profile both the thinnest and the heaviest location.</div>`;
-  }
+  } else if(air!==null&&start!==null&&air>start){
+    // Before calibration the curve shapes are exact, but the time axis is relative:
+    // 1× = the time the reference part takes to reach the target PMT.
+    const L=tgtOk?Math.log((air-start)/(air-tgt.pmt)):1;
+    const rr=pick.map(r=>({t:r.t,tau:r.rel/L,reach:tgtOk?r.rel:null}));
+    const tMax=tgtOk?Math.max(...rr.map(r=>r.reach))*1.3:Math.max(...rr.map(r=>r.tau))*4;
+    chart=huChart({rows:rr,air,start,pmt:tgtOk?tgt.pmt:null,tMax,unit:'rel',refLabel:ref.label});
+  } else chart='<div class="empty-state">Enter an oven air temperature above the start temperature to draw the heat-up curves.</div>';
   out.innerHTML=`${msgs.map(m=>`<div class="notice warning">${esc(m)}</div>`).join('')}${table}${hint}${chart}${insight}<div class="notice cure-warning"><b>Estimate only.</b> ${canTime?`Calibrated from your reading of ${refThk} mm ${esc(refMat.name.toLowerCase())} reaching ${refT}°C after ${refMin} min. Valid only for the same oven, settings, line speed and loading.`:'Relative times assume the same oven and loading for every thickness.'} ${tgtOk&&tsel!=='custom'?`The cure target is ${esc(tgt.group||'')} reference data — your product TDS takes precedence.`:''} Confirm with a profiler on the slowest-heating location before setting a production cycle.</div>`;
 }
-// Before calibration: bar chart of relative heat-up time. Physics only, no oven assumptions.
-function huRelChart(rows,refLabel){
-  const w=820,rowH=30,left=70,right=90,top=16,h=top+rows.length*rowH+34,pw=w-left-right;
-  const max=Math.max(...rows.map(r=>r.rel));
-  const bars=rows.map((r,i)=>{const y=top+i*rowH,bw=Math.max(2,r.rel/max*pw);return `<text x="${left-10}" y="${y+19}" text-anchor="end" font-size="13" font-weight="700" fill="#102a43">${r.t} mm</text><rect x="${left}" y="${y+5}" width="${bw}" height="20" rx="4" fill="#1f7a8c" opacity="${0.45+0.55*r.rel/max}"/><text x="${left+bw+8}" y="${y+19}" font-size="13" fill="#334e68">${r.rel.toFixed(r.rel<10?2:1)}×</text>`;}).join('');
-  return `<div class="cure-graph"><svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Relative heat-up time by thickness">${bars}<text x="${left}" y="${h-10}" font-size="12" fill="#52677a">Relative time to reach PMT (1× = ${esc(refLabel)}) — longer bar = slower to heat</text></svg><div class="hu-legend"><span class="muted">Add oven air temperature, a cure target and one profiler reading to see this as minutes and temperature curves.</span></div></div>`;
-}
-function huChart(rows,air,start,pmt,tMax){
-  const w=820,h=320,left=58,right=24,top=20,bottom=46,pw=w-left-right,ph=h-top-bottom;
+// Part metal temperature vs time for each thickness (lumped heating toward oven air).
+function huChart(o){
+  const {rows,air,start,pmt,tMax,unit}=o;
+  const w=820,h=330,left=58,right=24,top=24,bottom=50,pw=w-left-right,ph=h-top-bottom;
   const yMin=Math.floor(start/10)*10, yMax=Math.ceil(air/10)*10;
   const x=s=>left+s/tMax*pw, y=T=>top+ph-(T-yMin)/(yMax-yMin)*ph;
-  const colors=['#1f7a8c','#2f9e77','#6b4eff','#c77b19','#b42318','#334e68'];
-  const lines=rows.map((r,k)=>{const pts=[];for(let i=0;i<=160;i++){const s=tMax*i/160;pts.push(`${x(s).toFixed(1)},${y(air-(air-start)*Math.exp(-s/r.tau)).toFixed(1)}`);}return `<polyline points="${pts.join(' ')}" fill="none" stroke="${colors[k%6]}" stroke-width="2.5"/><circle cx="${x(r.reach)}" cy="${y(pmt)}" r="4" fill="${colors[k%6]}"/>`;}).join('');
-  const minTicks=[];const step=tMax/60>40?10:tMax/60>15?5:2;for(let m=0;m*60<=tMax;m+=step)minTicks.push(m);
-  const xt=minTicks.map(m=>`<text x="${x(m*60)}" y="${h-26}" text-anchor="middle" font-size="11" fill="#52677a">${m}</text>`).join('');
-  const yt=[yMin,Math.round((yMin+yMax)/2),yMax].map(v=>`<line x1="${left}" y1="${y(v)}" x2="${left+pw}" y2="${y(v)}" stroke="#e3e9ef"/><text x="${left-8}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="#52677a">${v}</text>`).join('');
-  return `<div class="cure-graph"><svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Estimated part metal temperature over time by thickness">${yt}<line x1="${left}" y1="${y(pmt)}" x2="${left+pw}" y2="${y(pmt)}" stroke="#b42318" stroke-dasharray="6 4"/><text x="${left+pw-4}" y="${y(pmt)+14}" text-anchor="end" font-size="11" fill="#b42318">target PMT ${pmt}°C</text><line x1="${left}" y1="${y(air)}" x2="${left+pw}" y2="${y(air)}" stroke="#9fb0c0" stroke-dasharray="2 4"/><text x="${left+pw-4}" y="${y(air)-6}" text-anchor="end" font-size="11" fill="#52677a">oven air ${air}°C</text>${lines}${xt}<text x="${w/2}" y="${h-6}" text-anchor="middle" font-size="12" fill="#52677a">Minutes in oven (estimate)</text><text transform="translate(15 ${h/2}) rotate(-90)" text-anchor="middle" font-size="12" fill="#52677a">Part metal temp (°C)</text></svg><div class="hu-legend">${rows.map((r,k)=>`<span><i style="background:${colors[k%6]}"></i>${r.t} mm · ${fmtMin(r.reach)} min</span>`).join('')}<span class="muted">● = reaches target PMT</span></div></div>`;
+  const colors=['#1f7a8c','#2f9e77','#6b4eff','#c77b19','#b42318','#334e68','#d6409f','#8a6d00'];
+  const hasP=pmt!==null&&pmt!==undefined;
+  const lines=rows.map((r,k)=>{const pts=[];for(let i=0;i<=160;i++){const s=tMax*i/160;pts.push(`${x(s).toFixed(1)},${y(air-(air-start)*Math.exp(-s/r.tau)).toFixed(1)}`);}return `<polyline points="${pts.join(' ')}" fill="none" stroke="${colors[k%8]}" stroke-width="2.5"/>${hasP&&r.reach!=null?`<circle cx="${x(r.reach)}" cy="${y(pmt)}" r="4.5" fill="${colors[k%8]}"/>`:''}`;}).join('');
+  let ticks=[];
+  if(unit==='min'){const step=tMax/60>40?10:tMax/60>15?5:2;for(let m=0;m*60<=tMax;m+=step)ticks.push([m*60,`${m}`]);}
+  else if(hasP){const step=tMax>8?2:tMax>4?1:0.5;for(let v=0;v<=tMax;v+=step)ticks.push([v,`${v}×`]);}
+  const xt=ticks.map(([v,l])=>`<line x1="${x(v)}" y1="${top+ph}" x2="${x(v)}" y2="${top+ph+4}" stroke="#9fb0c0"/><text x="${x(v)}" y="${h-30}" text-anchor="middle" font-size="11" fill="#52677a">${l}</text>`).join('');
+  const yt=[yMin,Math.round((yMin+yMax)/2),yMax].map(v=>`<line x1="${left}" y1="${y(v)}" x2="${left+pw}" y2="${y(v)}" stroke="#e3e9ef"/><text x="${left-8}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="#52677a">${v}°C</text>`).join('');
+  const xLabel=unit==='min'?'Minutes in oven (estimate from your reading)':hasP?`Relative time — 1× = time for ${o.refLabel} to reach ${pmt}°C`:'Relative time →';
+  const leg=r=>unit==='min'?`${r.t} mm · reaches PMT at ${fmtMin(r.reach)} min`:hasP?`${r.t} mm · ${r.reach.toFixed(r.reach<10?2:1)}×`:`${r.t} mm`;
+  const note=unit==='min'?'':`<span class="muted">Curve shapes are from physics; add a profiler reading (step 3) to turn the time axis into minutes.</span>`;
+  return `<div class="cure-graph hu-graph"><svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Part metal temperature versus time by thickness"><line x1="${left}" y1="${top}" x2="${left}" y2="${top+ph}" stroke="#9fb0c0"/><line x1="${left}" y1="${top+ph}" x2="${left+pw}" y2="${top+ph}" stroke="#9fb0c0"/>${yt}${hasP?`<line x1="${left}" y1="${y(pmt)}" x2="${left+pw}" y2="${y(pmt)}" stroke="#b42318" stroke-dasharray="6 4"/><text x="${left+pw-4}" y="${y(pmt)+14}" text-anchor="end" font-size="11" fill="#b42318">target PMT ${pmt}°C</text>`:''}<line x1="${left}" y1="${y(air)}" x2="${left+pw}" y2="${y(air)}" stroke="#9fb0c0" stroke-dasharray="2 4"/><text x="${left+pw-4}" y="${y(air)-6}" text-anchor="end" font-size="11" fill="#52677a">oven air ${air}°C</text>${lines}${xt}<text x="${left+pw/2}" y="${h-8}" text-anchor="middle" font-size="12" fill="#52677a">${esc(xLabel)}</text><text transform="translate(14 ${top+ph/2}) rotate(-90)" text-anchor="middle" font-size="12" fill="#52677a">Part metal temperature</text></svg><div class="hu-legend">${rows.map((r,k)=>`<span><i style="background:${colors[k%8]}"></i>${leg(r)}</span>`).join('')}${hasP?'<span class="muted">● reaches target PMT</span>':''}${note}</div></div>`;
 }
 function switchTab(tab){state.tab=tab;$$('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));$$('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+tab));if(tab==='knowledge')renderAllProblems();}
 async function boot(){
